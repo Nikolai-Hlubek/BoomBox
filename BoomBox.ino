@@ -1,6 +1,3 @@
-//Add the SdFat Libraries
-//#include <SdFat.h>
-//#include <SdFatUtil.h>
 #include <SPI.h>
 #include <SdFat.h>
 #include <vs1053_SdFat.h>
@@ -12,22 +9,20 @@
 #define BUTTON_PIN_4 14
 #define BUTTON_PIN_5 15
 #define BUTTON_PIN_6 16
-#define BUTTON_DEBOUNCE_PERIOD 20 // ms
+#define BUTTON_DEBOUNCE_PERIOD_MS 20 // ms
 
 static const uint16_t buttons[6] = {BUTTON_PIN_1, BUTTON_PIN_2, BUTTON_PIN_3, BUTTON_PIN_4, BUTTON_PIN_5, BUTTON_PIN_6};
 static const uint16_t numberOfButtons = sizeof(buttons) / sizeof(buttons[0]);
 
+
 SdFat sd;
-//SdFile file;
+File sdDir;  // open folder
+File sdFile;  // open file
 vs1053 MP3player;
 
 Bounce bNext  = Bounce();
-Bounce bStop  = Bounce();
+Bounce bPause  = Bounce();
 Bounce bPlay  = Bounce();
-
-// Variable für das Lesen des Verzeichnisses
-File sdDir;
-File sdFile;
 
 char rootDir[2] = "/";
 
@@ -39,13 +34,11 @@ void printSDRootContent() {
 
   while (sdFile.openNext(&sdDir, O_READ)) {
     sdFile.getName(filename, sizeof(filename));
-    if ( isFnMusic(filename) ) {
      
-      char result[100];
-      snprintf(result, sizeof(result), "%s%s", rootDir, filename);
-      Serial.println(result);
-//      MP3player.playMP3(&result[0]);
-    }
+    char result[52];
+    snprintf(result, sizeof(result), "%s%s", rootDir, filename);
+    Serial.println(result);
+
     sdFile.close();
   }
   sdDir.close();
@@ -54,16 +47,17 @@ void printSDRootContent() {
 void setup() {
   Serial.begin(9600);
 
+  // use pullup of arduino to make hardware cheaper
   for (int i=0; i<numberOfButtons; i++) {
       pinMode(buttons[i], INPUT_PULLUP);
   }
 
   bNext.attach(BUTTON_PIN_1);
-  bNext.interval(BUTTON_DEBOUNCE_PERIOD);
+  bNext.interval(BUTTON_DEBOUNCE_PERIOD_MS);
   bPause.attach(BUTTON_PIN_2);
-  bPause.interval(BUTTON_DEBOUNCE_PERIOD);
+  bPause.interval(BUTTON_DEBOUNCE_PERIOD_MS);
   bPlay.attach(BUTTON_PIN_3);
-  bPlay.interval(BUTTON_DEBOUNCE_PERIOD);
+  bPlay.interval(BUTTON_DEBOUNCE_PERIOD_MS);
 
   if (!sd.begin(9, SPI_HALF_SPEED)) {
     sd.initErrorHalt();
@@ -86,39 +80,42 @@ void setup() {
   MP3player.setBassAmplitude(7);
   // State of the player
   if (MP3player.getState() == 1) {
-    Serial.println("Player erfolgreich gestartet");
+    Serial.println("MP3 player started successfully.");
   }
 
-  MP3player.setVolume(1,1);
+  MP3player.setVolume(10,10);  // smaller numbers are louder
 
   printSDRootContent();
-  sdDir.open(rootDir);
 }
 
 
 void loop() {
-  uint8_t buttonStates[numberOfButtons] = {2};
-  for (int i=0; i<numberOfButtons; i++) {
-    buttonStates[i] = digitalRead(buttons[i]);
-  }
-
-  sdDir.open(rootDir);
-
   if (bNext.update()) {
     if (bNext.read() == LOW) {
-
-      Serial.println("Playing next track.");
       char filename[50];
-      sdFile.openNext(&sdDir, O_READ);
+
+      bool filesRemaining = true;
+
+      if (!sdDir.isOpen()) {
+        Serial.println("opening");
+        sdDir.open(rootDir);
+      }
+      filesRemaining = sdFile.openNext(&sdDir, O_READ);
       sdFile.getName(filename, sizeof(filename));
       Serial.println(filename);
-      if ( isFnMusic(filename) ) {
-        MP3player.playMP3(filename);
-              snprintf(result, sizeof(result), "%s%s", dirname, filename);
-      Serial.println(result);
-//      MP3player.playMP3(&result[0]);
+
+      if (filesRemaining==false) {
+        Serial.println("looping");
+        sdDir.close();
+        sdDir.open(rootDir);          
       }
-    sdFile.close();      
+
+      if ( isFnMusic(filename) ) {
+        Serial.println("Starting playback.");
+        MP3player.stopTrack();
+        MP3player.playMP3(filename);
+      }
+      sdFile.close();
     }
   }
 
@@ -127,7 +124,7 @@ void loop() {
       MP3player.SendSingleMIDInote();  // play short "Beep"
 
       Serial.println("Pausing current track.");
-      if MP3player.isPlaying() {
+      if (MP3player.isPlaying()) {
         MP3player.pauseMusic();
       } else {
         MP3player.resumeMusic();
@@ -135,14 +132,5 @@ void loop() {
     }
   }
 
-
-
-/*
-  for (int i=0; i<numberOfButtons; i++) {
-    Serial.print(buttonStates[i]);
-    Serial.print(" ");
-  }
-  Serial.println("foo");
-*/
 //  delay(100);
 }
