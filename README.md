@@ -43,3 +43,7 @@ It controls if the playlists stop after one song or continue playing.
 Default is to stop after each song.
 
 
+## Tools
+
+Electronics Layout: Frizing
+Software development: PlatformIO plugin for VisualStudio Code
