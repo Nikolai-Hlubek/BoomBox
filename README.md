@@ -34,9 +34,9 @@ This may be fixable in the future by careful memory management and good software
 
 A file called <playbackMode.txt> with the following contents  
 
-Music1 one
-Music2 all
-Music3 one
+Music1 one  
+Music2 all  
+Music3 one  
 
 goes into the root folder.
 It controls if the playlists stop after one song or continue playing.  
@@ -45,5 +45,5 @@ Default is to stop after each song.
 
 ## Tools
 
-Electronics Layout: Frizing
+Electronics Layout: Frizing  
 Software development: PlatformIO plugin for VisualStudio Code
