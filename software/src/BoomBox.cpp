@@ -7,11 +7,6 @@
 #include <vs1053_SdFat.h>
 #include <Bounce2.h>
 
-void printSDRootContent();
-void next(const char* pDirMusic);
-void volume();
-void pause();
-void stop();
 
 #define BUTTON_PIN_1 17
 #define BUTTON_PIN_2 18
@@ -27,7 +22,6 @@ static const uint16_t volumePresets[] = {10, 20, 30, 40, 50, 60};
 static uint16_t volumePresetsIdx = 0;
 static uint8_t isPaused = 0;
 
-static const char* pDirRoot = "/";
 static const char* pDirMusic1 = "/Music1";
 static const char* pDirMusic2 = "/Music2";
 static const char* pDirMusic3 = "/Music3";
@@ -206,7 +200,7 @@ void setup() {
   }
 
   uint8_t  status = 0;
-  status = MP3player.begin();
+  status = MP3player.begin();  // Loads patch if present
   if (status != 0) {
     Serial.println(F("MP3 player init failed with code:"));
     Serial.println(status);
