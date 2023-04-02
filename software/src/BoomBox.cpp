@@ -104,52 +104,10 @@ extern void *__brkval;
 //
 int freeMemory() {
 	int free_memory;
-	if ((int) __brkval)
+	if ((int) __brkval) {
 		return ((int) &free_memory) - ((int) __brkval);
+  }
 	return ((int) &free_memory) - ((int) &__bss_end);
-}
-
-void printSDRootContent() {
-  char filename[50];
-  File sdFile;  // open file
-
-  sdDir.open(pDirRoot);
-
-  while (sdFile.openNext(&sdDir, O_READ)) {
-    sdFile.getName(filename, sizeof(filename));
-     
-    char result[52];
-    snprintf(result, sizeof(result), "%s%s", pDirRoot, filename);
-    Serial.println(result);
-
-    sdFile.close();
-  }
-  sdDir.close();
-}
-
-void printDirectory(File dir, int numTabs) {
-  while (true) {
-    File entry =  dir.openNextFile();
-    if (! entry) {  // no more files
-      break;
-    }
-
-    for (uint8_t i = 0; i < numTabs; i++) {
-      Serial.print('\t');
-    }
-
-    //Serial.print(entry.getName());
-
-    if (entry.isDirectory()) {
-      Serial.println("/");
-      printDirectory(entry, numTabs + 1);
-    } else {
-      // files have sizes, directories do not
-      Serial.print("\t\t");
-      Serial.println(entry.size(), DEC);
-    }
-    entry.close();
-  }
 }
 
 uint8_t countFilesInDirectory(const char* const pDirMusic) {
@@ -169,6 +127,7 @@ uint8_t countFilesInDirectory(const char* const pDirMusic) {
   sdDir.close();
   return count;
 }
+
 
 PlaybackMode readPlaybackMode(const char* const line) {
   if (strncmp(line, "one", 3) == 0) {
@@ -215,21 +174,6 @@ void setPlaybackMode() {
   file.close();
 }
 
-void getSDFolderContent(const char* pDirMusic) {
-  char filename[50];
-  sdDir.open(pDirMusic);
-
-  while (sdFile.openNext(&sdDir, O_READ)) {
-    sdFile.getName(filename, sizeof(filename));
-     
-    char result[52];
-    snprintf(result, sizeof(result), "%s%s", pDirRoot, filename);
-    Serial.println(result);
-
-    sdFile.close();
-  }
-  sdDir.close();
-}
 
 void setup() {
   Serial.begin(9600);
@@ -267,9 +211,9 @@ void setup() {
     Serial.println(F("MP3 player init failed with code:"));
     Serial.println(status);
   }
-  // Höhen: erlaubte Werte: -8 bis 7
+  // Hoehen: erlaubte Werte: -8 bis 7
   MP3player.setTrebleAmplitude(4);
-  // Bässe: erlaubte Werte 0 bis 15
+  // Baesse: erlaubte Werte 0 bis 15
   MP3player.setBassAmplitude(7);
   // State of the player
   if (MP3player.getState() == 1) {
@@ -278,29 +222,20 @@ void setup() {
 
   MP3player.setVolume(20,20);  // smaller numbers are louder
 
-//  printSDRootContent();
-
   playlist1.maxTrackNo = countFilesInDirectory(playlist1.pDirMusic);
   playlist2.maxTrackNo = countFilesInDirectory(playlist2.pDirMusic);
   playlist3.maxTrackNo = countFilesInDirectory(playlist3.pDirMusic);
-//  Serial.println(playlist1.maxTrackNo);
-//  Serial.println(playlist2.maxTrackNo);
-//  Serial.println(playlist3.maxTrackNo);
   
   setPlaybackMode();
 }
+
 
 void play(Playlist& playlist) {
   char filepath[] = "/Music1/track001.mp3";
 
   // generate filename of file to play
   sprintf(filepath, "%s/track%03d.mp3", playlist.pDirMusic, playlist.currentTrackNo);
-//  const char* pSep = "/";
-//  strncat(filepath, pSep, strlen(pSep));  // Concatenate up to n characters from string2 to string1
-//  strncat(filepath, filename, strlen(filename));
 
-  //tack the number onto the rest of the filename
-//  sprintf(filepath, "/Music1/track%03d.mp3", dir1CurrentTrackNo);
   Serial.println(filepath);
   ++playlist.currentTrackNo;
   if ((playlist.currentTrackNo) > 0 && (playlist.currentTrackNo > playlist.maxTrackNo)) {
@@ -317,55 +252,6 @@ void play(Playlist& playlist) {
   Serial.println(freeMemory());  // print how much RAM is available in bytes.
 }
 
-void next(const char* pDirMusic) {
-  static char filename[20] = "";
-  static char filepath[30] = "";
-
-  bool filesRemaining = true;
-
-  uint8_t dirMusicCurrent = (uint8_t)(pDirMusic[6]);
-//  Serial.println(dirMusicCurrent);
-//  Serial.println(dirMusicLast);
-  if (dirMusicLast != dirMusicCurrent) {
-    Serial.println(F("Loading new playlist."));
-    sdDir.close();
-    sdDir.open(pDirMusic);
-    dirMusicLast = dirMusicCurrent;
-  }
-
-//  Serial.println("Find Break 1");
-  filesRemaining = sdFile.openNext(&sdDir, O_READ);
-//  Serial.println("Find Break 2");
-  sdFile.getName(filename, sizeof(filename));
-//  Serial.println(filename);
-
-  if (filesRemaining==false) {
-    Serial.println("looping");
-    sdDir.close();
-    sdDir.open(pDirMusic);
-    sdFile.openNext(&sdDir, O_READ);
-    sdFile.getName(filename, sizeof(filename));
-    Serial.println(filename);
-  }
-  sdFile.close();
-
-  if ( isFnMusic(filename) ) {
-    const char* pSep = "/";
-    sprintf(filepath, pDirMusic);
-    strncat(filepath, pSep, strlen(pSep));  // Concatenate up to n characters from string2 to string1
-    strncat(filepath, filename, strlen(filename));
-    Serial.println("Starting playback of file:");
-    Serial.println(filepath);
-    MP3player.stopTrack();
-    delay(100);
-    MP3player.playMP3(filepath);
-    delay(100);
-  }
-
-    Serial.println(F("Free RAM = "));
-    Serial.println(freeMemory());  // print how much RAM is available in bytes.
-
-}
 
 void volume() {
   Serial.println(F("Change volume."));
@@ -378,7 +264,6 @@ void volume() {
   int16_t vol = volumePresets[volumePresetsIdx];
   
   MP3player.setVolume(vol,vol);  // smaller numbers are louder
-
 }
 
 void pause() {
@@ -396,9 +281,6 @@ void pause() {
 }
 
 void stop() {
-//  MP3player.SendSingleMIDInote();  // play short "Beep"
-//  Serial.println("Stop current track.");
-
   playlist1.playbackState = PlaybackState::Stopped;
   playlist2.playbackState = PlaybackState::Stopped;
   playlist3.playbackState = PlaybackState::Stopped;
@@ -424,6 +306,7 @@ void loop() {
 
   if (bStop.update()) {
     if (bStop.read() == LOW) {
+      MP3player.SendSingleMIDInote();  // play short "Beep"
       stop();
     }
   }
