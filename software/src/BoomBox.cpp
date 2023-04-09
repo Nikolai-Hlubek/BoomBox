@@ -14,21 +14,14 @@
 #define BUTTON_PIN_4 14
 #define BUTTON_PIN_5 15
 #define BUTTON_PIN_6 16
-#define BUTTON_DEBOUNCE_PERIOD_MS 20 // ms
+#define BUTTON_DEBOUNCE_PERIOD_MS 20  // ms
 
 static const uint16_t buttons[6] = {BUTTON_PIN_1, BUTTON_PIN_2, BUTTON_PIN_3, BUTTON_PIN_4, BUTTON_PIN_5, BUTTON_PIN_6};
 static const uint16_t numberOfButtons = sizeof(buttons) / sizeof(buttons[0]);
-static const uint16_t volumePresets[] = {10, 20, 30, 40, 50, 60};
-static uint16_t volumePresetsIdx = 0;
+static const uint16_t volumePresets[] = {50, 40, 30, 20, 10};
+static const uint8_t volumePresetsLen = sizeof(volumePresets)/sizeof(volumePresets[0]);
+static uint8_t volumePresetsIdx = 3;
 static uint8_t isPaused = 0;
-
-static const char* pDirMusic1 = "/Music1";
-static const char* pDirMusic2 = "/Music2";
-static const char* pDirMusic3 = "/Music3";
-static uint8_t dirMusicLast = 0;
-
-static uint8_t dir1CurrentTrackNo = 1;
-static uint8_t dir1MaxTrackNo = 1;
 
 
 enum class PlaybackMode : uint8_t
@@ -214,7 +207,8 @@ void setup() {
     Serial.println(F("MP3 player started successfully."));
   }
 
-  MP3player.setVolume(20,20);  // smaller numbers are louder
+  int16_t vol = volumePresets[volumePresetsIdx];
+  MP3player.setVolume(vol,vol);  // smaller numbers are louder
 
   playlist1.maxTrackNo = countFilesInDirectory(playlist1.pDirMusic);
   playlist2.maxTrackNo = countFilesInDirectory(playlist2.pDirMusic);
@@ -251,7 +245,7 @@ void volume() {
   Serial.println(F("Change volume."));
 
   ++volumePresetsIdx;
-  if (volumePresetsIdx > sizeof(volumePresets)) {
+  if (volumePresetsIdx >= volumePresetsLen) {
     volumePresetsIdx = 0;
   }
 
@@ -286,6 +280,9 @@ void stop() {
 
 void loop() {
 
+  // -------------------------------------------------------------------------
+  // input handling
+  // -------------------------------------------------------------------------
   if (bVolume.update()) {
     if (bVolume.read() == LOW) {
       volume();
@@ -326,5 +323,27 @@ void loop() {
     }
   }
 
-//  delay(100);
+  // -------------------------------------------------------------------------
+  // if track is finished and playback mode is "all" then play next track
+  // -------------------------------------------------------------------------
+  if ((playlist1.playbackMode == PlaybackMode::All) && (playlist1.playbackState == PlaybackState::Playing)) {
+    if (!MP3player.isPlaying()) {  // track finished
+      play(playlist1);  // play next song
+    }
+  }
+  if ((playlist2.playbackMode == PlaybackMode::All) && (playlist2.playbackState == PlaybackState::Playing)) {
+    if (!MP3player.isPlaying()) {  // track finished
+      play(playlist2);  // play next song
+    }
+  }
+  if ((playlist3.playbackMode == PlaybackMode::All) && (playlist3.playbackState == PlaybackState::Playing)) {
+    if (!MP3player.isPlaying()) {  // track finished
+      play(playlist3);  // play next song
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // wait so we don't overload the CPU and bus
+  // -------------------------------------------------------------------------
+  delay(100);  // delay in ms
 }
