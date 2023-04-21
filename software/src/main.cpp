@@ -125,6 +125,9 @@ void setPlaybackMode() {
     } else if (strncmp(line, "Music3", 6) == 0) {
       playlist3.playbackMode = readPlaybackMode(line+7);
 //      Serial.println(static_cast<uint8_t>(playlist3.playbackMode));
+    } else if (strncmp(line, "Music4", 6) == 0) {
+      playlist4.playbackMode = readPlaybackMode(line+7);
+//      Serial.println(static_cast<uint8_t>(playlist3.playbackMode));
     }
   }
 
@@ -250,6 +253,7 @@ void stop() {
   playlist1.playbackState = PlaybackState::Stopped;
   playlist2.playbackState = PlaybackState::Stopped;
   playlist3.playbackState = PlaybackState::Stopped;
+  playlist4.playbackState = PlaybackState::Stopped;
 
   if (MP3player.isPlaying()) {
     MP3player.stopTrack();
