@@ -226,8 +226,15 @@ void play(Playlist& playlist) {
 
   Serial.println(filepath);
   ++playlist.currentTrackNo;
+  // Album finished?
   if ((playlist.currentTrackNo) > 0 && (playlist.currentTrackNo > playlist.maxTrackNo)) {
     playlist.currentTrackNo = 1;
+
+    // Stop here if playlist finished and playback mode is all
+    if (playlist.playbackMode == PlaybackMode::All) {
+      playlist.playbackState = PlaybackState::Stopped;
+      return;
+    }
   }
 
   MP3player.stopTrack();
