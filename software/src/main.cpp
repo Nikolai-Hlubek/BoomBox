@@ -1,12 +1,12 @@
+#include "BoomBox.h"
+
 #include <Arduino.h>
-
-#include <string.h>
-
 #include <SPI.h>
 #include <SdFat.h>
 #include <vs1053_SdFat.h>
 #include <Bounce2.h>
 
+#include <string.h>
 
 #define BUTTON_PIN_1 17
 #define BUTTON_PIN_2 18
@@ -23,28 +23,6 @@ static const uint8_t volumePresetsLen = sizeof(volumePresets)/sizeof(volumePrese
 static uint8_t volumePresetsIdx = 3;
 static uint8_t isPaused = 0;
 
-
-enum class PlaybackMode : uint8_t
-{
-    One = 1,
-    All
-};
-
-enum class PlaybackState : uint8_t
-{
-    Stopped = 1,
-    Playing,
-    Paused
-};
-
-
-typedef struct Playlist {
-  const char* pDirMusic;
-  uint8_t currentTrackNo;
-  uint8_t maxTrackNo;
-  PlaybackState playbackState;
-  PlaybackMode playbackMode;
-} Playlist;
 
 Playlist playlist1 {
   .pDirMusic = "/Music1", 
@@ -67,6 +45,14 @@ Playlist playlist3 {
   .playbackState = PlaybackState::Stopped,
   .playbackMode = PlaybackMode::All,
 };
+Playlist playlist4 {
+  .pDirMusic = "/Music4", 
+  .currentTrackNo = 1,
+  .maxTrackNo = 1,
+  .playbackState = PlaybackState::Stopped,
+  .playbackMode = PlaybackMode::All,
+};
+
 
 SdFat sd;
 File sdDir;  // open folder
@@ -74,28 +60,12 @@ File sdFile;  // open file
 vs1053 MP3player;
 
 Bounce bPause  = Bounce();
-Bounce bStop  = Bounce();
 Bounce bVolume  = Bounce();
 Bounce bMusic1  = Bounce();
 Bounce bMusic2  = Bounce();
 Bounce bMusic3  = Bounce();
+Bounce bMusic4  = Bounce();
 
-//
-// Used in calculating free memory.
-//
-extern unsigned int __bss_end;
-extern void *__brkval;
-
-//
-// Returns the current amount of free memory in bytes.
-//
-int freeMemory() {
-	int free_memory;
-	if ((int) __brkval) {
-		return ((int) &free_memory) - ((int) __brkval);
-  }
-	return ((int) &free_memory) - ((int) &__bss_end);
-}
 
 uint8_t countFilesInDirectory(const char* const pDirMusic) {
   uint8_t count = 0;
@@ -172,8 +142,6 @@ void setup() {
 
   bPause.attach(BUTTON_PIN_1);
   bPause.interval(BUTTON_DEBOUNCE_PERIOD_MS);
-  bStop.attach(BUTTON_PIN_2);
-  bStop.interval(BUTTON_DEBOUNCE_PERIOD_MS);
   bVolume.attach(BUTTON_PIN_3);
   bVolume.interval(BUTTON_DEBOUNCE_PERIOD_MS);
   bMusic1.attach(BUTTON_PIN_4);
@@ -182,6 +150,8 @@ void setup() {
   bMusic2.interval(BUTTON_DEBOUNCE_PERIOD_MS);
   bMusic3.attach(BUTTON_PIN_6);
   bMusic3.interval(BUTTON_DEBOUNCE_PERIOD_MS);  
+  bMusic4.attach(BUTTON_PIN_2);
+  bMusic4.interval(BUTTON_DEBOUNCE_PERIOD_MS);
 
   if (!sd.begin(9, SPI_HALF_SPEED)) {
     sd.initErrorHalt();
@@ -213,39 +183,40 @@ void setup() {
   playlist1.maxTrackNo = countFilesInDirectory(playlist1.pDirMusic);
   playlist2.maxTrackNo = countFilesInDirectory(playlist2.pDirMusic);
   playlist3.maxTrackNo = countFilesInDirectory(playlist3.pDirMusic);
+  playlist4.maxTrackNo = countFilesInDirectory(playlist4.pDirMusic);
   
   setPlaybackMode();
 }
 
 
-void play(Playlist& playlist) {
-  char filepath[] = "/Music1/track001.mp3";
+// void play(Playlist& playlist) {
+//   char filepath[] = "/MusicX/track00Y.mp3";
 
-  // generate filename of file to play
-  sprintf(filepath, "%s/track%03d.mp3", playlist.pDirMusic, playlist.currentTrackNo);
+//   // generate filename of file to play
+//   sprintf(filepath, "%s/track%03d.mp3", playlist.pDirMusic, playlist.currentTrackNo);
 
-  Serial.println(filepath);
-  ++playlist.currentTrackNo;
-  // Album finished?
-  if ((playlist.currentTrackNo) > 0 && (playlist.currentTrackNo > playlist.maxTrackNo)) {
-    playlist.currentTrackNo = 1;
+//   Serial.println(filepath);
+//   ++playlist.currentTrackNo;
+//   // Album finished?
+//   if ((playlist.currentTrackNo) > 0 && (playlist.currentTrackNo > playlist.maxTrackNo)) {
+//     playlist.currentTrackNo = 1;
 
-    // Stop here if playlist finished and playback mode is all
-    if (playlist.playbackMode == PlaybackMode::All) {
-      playlist.playbackState = PlaybackState::Stopped;
-      return;
-    }
-  }
+//     // Stop here if playlist finished and playback mode is all
+//     if (playlist.playbackMode == PlaybackMode::All) {
+//       playlist.playbackState = PlaybackState::Stopped;
+//       return;
+//     }
+//   }
 
-  MP3player.stopTrack();
-  delay(100);
-  MP3player.playMP3(filepath);
-  playlist.playbackState = PlaybackState::Playing;
-  delay(100);
+//   MP3player.stopTrack();
+//   delay(100);
+//   MP3player.playMP3(filepath);
+//   playlist.playbackState = PlaybackState::Playing;
+//   delay(100);
 
-  Serial.println(F("Free RAM in bytes"));
-  Serial.println(freeMemory());  // print how much RAM is available in bytes.
-}
+//   Serial.println(F("Free RAM in bytes"));
+//   Serial.println(freeMemory());  // print how much RAM is available in bytes.
+// }
 
 
 void volume() {
@@ -302,31 +273,31 @@ void loop() {
     }
   }
 
-  if (bStop.update()) {
-    if (bStop.read() == LOW) {
-      MP3player.SendSingleMIDInote();  // play short "Beep"
-      stop();
-    }
-  }
-
   if (bMusic1.update()) {
     if (bMusic1.read() == LOW) {
       stop();
-      play(playlist1);
+      play(playlist1, MP3player);
     }
   }
 
   if (bMusic2.update()) {
     if (bMusic2.read() == LOW) {
       stop();
-      play(playlist2);
+      play(playlist2, MP3player);
     }
   }
 
   if (bMusic3.update()) {
     if (bMusic3.read() == LOW) {
       stop();
-      play(playlist3);
+      play(playlist3, MP3player);
+    }
+  }
+
+  if (bMusic4.update()) {
+    if (bMusic4.read() == LOW) {
+      stop();
+      play(playlist4, MP3player);
     }
   }
 
@@ -335,17 +306,22 @@ void loop() {
   // -------------------------------------------------------------------------
   if ((playlist1.playbackMode == PlaybackMode::All) && (playlist1.playbackState == PlaybackState::Playing)) {
     if (!MP3player.isPlaying()) {  // track finished
-      play(playlist1);  // play next song
+      play(playlist1, MP3player);  // play next song
     }
   }
   if ((playlist2.playbackMode == PlaybackMode::All) && (playlist2.playbackState == PlaybackState::Playing)) {
     if (!MP3player.isPlaying()) {  // track finished
-      play(playlist2);  // play next song
+      play(playlist2, MP3player);  // play next song
     }
   }
   if ((playlist3.playbackMode == PlaybackMode::All) && (playlist3.playbackState == PlaybackState::Playing)) {
     if (!MP3player.isPlaying()) {  // track finished
-      play(playlist3);  // play next song
+      play(playlist3, MP3player);  // play next song
+    }
+  }
+  if ((playlist4.playbackMode == PlaybackMode::All) && (playlist4.playbackState == PlaybackState::Playing)) {
+    if (!MP3player.isPlaying()) {  // track finished
+      play(playlist4, MP3player);  // play next song
     }
   }
 
