@@ -3,8 +3,6 @@
 #include "freeMem.h"
 #include <vs1053_SdFat.h>
 
-#include "Arduino.h"
-
 
 void play(Playlist& playlist, vs1053& MP3player) {
   char filepath[] = "/MusicX/track00Y.mp3";
@@ -21,6 +19,7 @@ void play(Playlist& playlist, vs1053& MP3player) {
     // Stop here if playlist finished and playback mode is all
     if (playlist.playbackMode == PlaybackMode::All) {
       playlist.playbackState = PlaybackState::Stopped;
+      playlist.currentTrackNo = 0;  // Go to zero so with the next button press we start at track one
       return;
     }
   }
